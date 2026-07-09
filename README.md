@@ -1,9 +1,9 @@
 # SlideAir
 
 Present with your hands. SlideAir turns your webcam into a presentation remote:
-swipe to change slides, point to get a laser dot, hold a fist to black out the
-screen. A held open palm arms and disarms everything so it never misfires while
-you talk with your hands.
+swipe to change slides and point at the screen to get a laser dot. A held open
+palm arms and disarms everything so it never misfires while you talk with your
+hands.
 
 All processing runs on your device with Google MediaPipe hand tracking compiled
 to WebAssembly. No account, no upload, no server.
@@ -15,8 +15,7 @@ to WebAssembly. No account, no upload, no server.
 | Open palm, hold | Arm or disarm gesture control |
 | Swipe left | Next slide |
 | Swipe right | Previous slide |
-| Point up | Laser pointer on your fingertip |
-| Fist, hold | Blackout toggle |
+| Point at the screen | Laser dot follows your fingertip |
 
 Keyboard works too: arrows navigate, F is fullscreen, B is blackout, H is help.
 

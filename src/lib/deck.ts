@@ -63,22 +63,22 @@ Raise an open palm and hold it for a moment to arm the controls.
 # Three gestures
 - **Swipe left** to go to the next slide
 - **Swipe right** to go back
-- **Point up** to turn your fingertip into a laser pointer
+- **Point at the screen** and a laser dot follows your fingertip
 ---
 ## Try it
-> Swipe left now.
+> Give a quick flick to the left.
 ---
 ## The laser
 # Point at things
-Raise your index finger and move it around.
+Extend your index finger, curl the others, and aim anywhere on the slide.
 
-The red dot follows your fingertip on every slide.
+Small hand movements cover the whole screen.
 ---
 ## Safety
 # It never misfires
 - A held **open palm** arms and disarms everything
 - Disarmed, you can talk with your hands freely
-- A held **fist** blacks out the screen
+- Keyboard always works: arrows, **F** fullscreen, **B** blackout
 ---
 ## Under the hood
 # On-device AI

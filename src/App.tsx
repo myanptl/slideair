@@ -36,9 +36,6 @@ export default function App() {
       } else if (e === 'prev') {
         setIndex((i) => Math.max(i - 1, 0))
         say('Back')
-      } else if (e === 'blackout-toggle') {
-        setIsBlackout((b) => !b)
-        say('Blackout')
       } else if (e === 'arm-toggle') {
         say('Gesture control toggled')
       }

@@ -2,10 +2,9 @@ import { useState } from 'react'
 
 const GESTURES: Array<[string, string]> = [
   ['Open palm, hold', 'Arm or disarm gesture control'],
-  ['Swipe left', 'Next slide'],
+  ['Swipe left', 'Next slide, one quick flick'],
   ['Swipe right', 'Previous slide'],
-  ['Point up', 'Laser pointer on your fingertip'],
-  ['Fist, hold', 'Blackout toggle'],
+  ['Point at the screen', 'Laser dot follows your fingertip'],
 ]
 
 const KEYS: Array<[string, string]> = [

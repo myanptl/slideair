@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision'
-import { GestureEngine } from '../lib/gestures'
+import { GestureEngine, isPointingPose } from '../lib/gestures'
 import type { EngineEvent, Frame, GestureName } from '../lib/gestures'
 
 export type CameraStatus = 'idle' | 'loading' | 'running' | 'denied' | 'error'
@@ -8,9 +8,8 @@ export type CameraStatus = 'idle' | 'loading' | 'running' | 'denied' | 'error'
 export interface HudData {
   armed: boolean
   armProgress: number
-  blackoutProgress: number
   laser: { active: boolean; x: number; y: number }
-  gesture: GestureName
+  gesture: GestureName | 'Pointing'
   fps: number
   /** mirrored normalized landmarks of the first hand, for the skeleton overlay */
   landmarks: Array<{ x: number; y: number }>
@@ -19,7 +18,6 @@ export interface HudData {
 const IDLE_HUD: HudData = {
   armed: false,
   armProgress: 0,
-  blackoutProgress: 0,
   laser: { active: false, x: 0, y: 0 },
   gesture: 'None',
   fps: 0,
@@ -59,7 +57,8 @@ export function useGestureEngine(onEvent: (e: EngineEvent) => void) {
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        // 60fps when the camera supports it: fast swipes get twice the samples
+        video: { width: 640, height: 480, facingMode: 'user', frameRate: { ideal: 60 } },
         audio: false,
       })
     } catch {
@@ -72,6 +71,10 @@ export function useGestureEngine(onEvent: (e: EngineEvent) => void) {
         baseOptions: { modelAssetPath: '/models/gesture_recognizer.task', delegate: 'GPU' },
         runningMode: 'VIDEO',
         numHands: 1,
+        // defaults (0.5) drop the hand during fast motion; keep tracking through blur
+        minHandDetectionConfidence: 0.4,
+        minHandPresenceConfidence: 0.4,
+        minTrackingConfidence: 0.35,
       })
 
       const video = videoRef.current
@@ -104,13 +107,15 @@ export function useGestureEngine(onEvent: (e: EngineEvent) => void) {
 
         const hand = result.landmarks?.[0]
         const category = result.gestures?.[0]?.[0]
+        const mirrored = hand ? hand.map((p) => ({ x: 1 - p.x, y: p.y })) : []
         // mirror x so all downstream logic matches what the user sees
         const frame: Frame = {
           t: now,
           gesture: (category?.categoryName || 'None') as GestureName,
           score: category?.score ?? 0,
-          wristX: hand ? 1 - hand[0].x : null,
-          indexTip: hand ? { x: 1 - hand[8].x, y: hand[8].y } : null,
+          wristX: hand ? mirrored[0].x : null,
+          indexTip: hand ? mirrored[8] : null,
+          pointing: hand ? isPointingPose(mirrored) : false,
         }
         const state = engine.step(frame)
         for (const e of state.events) onEventRef.current(e)
@@ -118,11 +123,10 @@ export function useGestureEngine(onEvent: (e: EngineEvent) => void) {
         hudRef.current = {
           armed: state.armed,
           armProgress: state.armProgress,
-          blackoutProgress: state.blackoutProgress,
           laser: state.laser,
-          gesture: frame.gesture,
+          gesture: frame.pointing ? 'Pointing' : frame.gesture,
           fps,
-          landmarks: hand ? hand.map((p) => ({ x: 1 - p.x, y: p.y })) : [],
+          landmarks: mirrored,
         }
         hudListeners.current.forEach((fn) => fn())
       }

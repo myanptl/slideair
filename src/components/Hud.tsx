@@ -44,7 +44,7 @@ export function Hud({ subscribe, getHud, videoRef, visible }: Props) {
     }
   }, [hud])
 
-  const holding = Math.max(hud.armProgress, hud.blackoutProgress)
+  const holding = hud.armProgress
 
   return (
     <div className={`hud ${visible ? '' : 'hud-hidden'}`}>
