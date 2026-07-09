@@ -1,0 +1,481 @@
+/* SlideAir: chalkboard lecture hall.
+   Deep pine board, chalk ivory type, chalk gold for the armed state only.
+   Laser red is semantic. One accent, no gradients. */
+
+:root {
+  --board: #17352a;
+  --board-deep: #102a20;
+  --chalk: #f1eee2;
+  --chalk-dim: #a9b8ab;
+  --line: rgba(241, 238, 226, 0.16);
+  --gold: #e6c34c;
+  --laser: #ff4438;
+  --display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--board);
+  color: var(--chalk);
+  font-family: var(--ui);
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stage {
+  position: relative;
+  height: 100%;
+  background: radial-gradient(120% 90% at 50% 20%, var(--board) 55%, var(--board-deep));
+}
+
+/* ---------- slide ---------- */
+.slide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2rem, 7vw, 7rem);
+}
+
+.slide-body {
+  max-width: 62rem;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 2.2vh, 1.5rem);
+}
+
+.kicker {
+  margin: 0;
+  font-size: clamp(0.8rem, 1.4vw, 1rem);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.slide-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(2.6rem, 7.5vw, 6.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  animation: rise 0.5s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.statement {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 4.6vw, 3.6rem);
+  line-height: 1.18;
+  text-wrap: balance;
+  animation: rise 0.5s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.para {
+  margin: 0;
+  max-width: 42rem;
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  line-height: 1.6;
+  color: var(--chalk-dim);
+  animation: rise 0.5s 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.para strong,
+.bullets strong {
+  color: var(--chalk);
+  font-weight: 600;
+}
+
+.bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.6vh, 1rem);
+}
+
+.bullets li {
+  position: relative;
+  padding-left: 1.7rem;
+  max-width: 44rem;
+  font-size: clamp(1.15rem, 2.4vw, 1.75rem);
+  line-height: 1.45;
+  animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 0.85rem;
+  height: 2px;
+  background: var(--gold);
+}
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.88em;
+  background: rgba(241, 238, 226, 0.12);
+  padding: 0.08em 0.38em;
+  border-radius: 4px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slide-footer {
+  position: absolute;
+  left: clamp(2rem, 7vw, 7rem);
+  right: clamp(2rem, 7vw, 7rem);
+  bottom: clamp(1.2rem, 3.5vh, 2.4rem);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  padding-top: 0.8rem;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--chalk-dim);
+}
+
+.page {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: var(--chalk-dim);
+}
+
+/* ---------- controls ---------- */
+.controls {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0.35;
+  transition: opacity 0.25s;
+}
+
+.controls:hover,
+.controls:focus-within {
+  opacity: 1;
+}
+
+.btn {
+  border: 1px solid var(--gold);
+  background: rgba(230, 195, 76, 0.12);
+  color: var(--chalk);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  transition: background 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(230, 195, 76, 0.24);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--chalk-dim);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: rgba(241, 238, 226, 0.08);
+  color: var(--chalk);
+}
+
+.btn:focus-visible,
+.blackout:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ---------- notices & toast ---------- */
+.notice {
+  position: absolute;
+  top: 4.2rem;
+  right: 1.2rem;
+  max-width: 21rem;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--chalk);
+  background: rgba(16, 42, 32, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+}
+
+.notice-quiet {
+  color: var(--chalk-dim);
+  border-style: dashed;
+  background: transparent;
+}
+
+.toast {
+  position: absolute;
+  bottom: clamp(1.2rem, 3.5vh, 2.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--chalk);
+  color: var(--board-deep);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  animation: rise 0.25s ease-out both;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  width: 208px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.hud-hidden {
+  visibility: hidden;
+}
+
+.hud-video-wrap {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--board-deep);
+}
+
+.hud-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  transform: scaleX(-1);
+  opacity: 0.85;
+}
+
+.hud-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hud-hold {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--gold);
+  transition: width 0.05s linear;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+
+.chip {
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.chip-armed {
+  background: var(--gold);
+  color: var(--board-deep);
+}
+
+.chip-idle {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--chalk-dim);
+}
+
+.hud-meta {
+  color: var(--chalk-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-fps {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- laser ---------- */
+.laser {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--laser);
+  box-shadow: 0 0 12px 3px rgba(255, 68, 56, 0.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ---------- blackout ---------- */
+.blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  border: none;
+  z-index: 30;
+}
+
+/* ---------- overlays ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 22, 16, 0.72);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+
+.panel {
+  width: min(30rem, calc(100vw - 2.4rem));
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background: var(--board-deep);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.panel-wide {
+  width: min(44rem, calc(100vw - 2.4rem));
+}
+
+.panel-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 1.35rem;
+}
+
+.legend {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.legend-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.legend-row dt {
+  flex: 0 0 9.5rem;
+  font-weight: 600;
+  color: var(--gold);
+  font-size: 0.92rem;
+}
+
+.legend-row dd {
+  margin: 0;
+  color: var(--chalk-dim);
+  font-size: 0.92rem;
+}
+
+.fineprint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--chalk-dim);
+}
+
+.deck-input {
+  width: 100%;
+  min-height: 16rem;
+  resize: vertical;
+  background: var(--board);
+  color: var(--chalk);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.9rem;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.deck-input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kicker,
+  .slide-title,
+  .statement,
+  .para,
+  .bullets li,
+  .toast {
+    animation: none;
+  }
+}
