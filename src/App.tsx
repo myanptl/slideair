@@ -38,12 +38,14 @@ export default function App() {
         say('Back')
       } else if (e === 'arm-toggle') {
         say('Gesture control toggled')
+      } else if (e === 'follow-toggle') {
+        say('Follow cam toggled')
       }
     },
     [total, say],
   )
 
-  const { status, start, stop, videoRef, subscribeHud, getHud } =
+  const { status, start, stop, videoRef, procRef, subscribeHud, getHud, toggleFollow } =
     useGestureEngine(handleEvent)
 
   useEffect(() => {
@@ -57,6 +59,8 @@ export default function App() {
         setIsBlackout((b) => !b)
       } else if (e.key === 'h' || e.key === 'H') {
         setShowHelp((s) => !s)
+      } else if (e.key === 'c' || e.key === 'C') {
+        toggleFollow()
       } else if (e.key === 'f' || e.key === 'F') {
         if (document.fullscreenElement) void document.exitFullscreen()
         else void document.documentElement.requestFullscreen()
@@ -71,7 +75,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [total])
+  }, [total, toggleFollow])
 
   const loadDeck = (md: string) => {
     const parsed = parseDeck(md)
@@ -129,6 +133,7 @@ export default function App() {
         subscribe={subscribeHud}
         getHud={getHud}
         videoRef={videoRef}
+        procRef={procRef}
         visible={status === 'running'}
       />
 

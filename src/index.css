@@ -274,7 +274,7 @@ code {
   position: absolute;
   right: 1.2rem;
   bottom: 1.2rem;
-  width: 208px;
+  width: 236px;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -292,20 +292,15 @@ code {
   background: var(--board-deep);
 }
 
-.hud-video {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  transform: scaleX(-1);
-  opacity: 0.85;
+.hud-source {
+  display: none;
 }
 
-.hud-canvas {
-  position: absolute;
-  inset: 0;
+.hud-view {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  opacity: 0.92;
 }
 
 .hud-hold {
@@ -320,7 +315,8 @@ code {
 .hud-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   font-size: 0.72rem;
 }
 

@@ -5,12 +5,14 @@ const GESTURES: Array<[string, string]> = [
   ['Swipe left', 'Next slide, one quick flick'],
   ['Swipe right', 'Previous slide'],
   ['Point at the screen', 'Laser dot follows your fingertip'],
+  ['Pinch, hold', 'Follow cam: zooms to keep you framed as you move'],
 ]
 
 const KEYS: Array<[string, string]> = [
   ['← →', 'Previous / next slide'],
   ['F', 'Fullscreen'],
   ['B', 'Blackout'],
+  ['C', 'Follow cam'],
   ['H', 'This help'],
 ]
 

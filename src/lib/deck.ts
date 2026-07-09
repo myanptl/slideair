@@ -60,10 +60,11 @@ Camera on. Nothing leaves this device.
 Raise an open palm and hold it for a moment to arm the controls.
 ---
 ## How it works
-# Three gestures
+# Four gestures
 - **Swipe left** to go to the next slide
 - **Swipe right** to go back
 - **Point at the screen** and a laser dot follows your fingertip
+- **Pinch and hold** for follow cam: it keeps you framed as you move around
 ---
 ## Try it
 > Give a quick flick to the left.

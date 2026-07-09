@@ -3,7 +3,9 @@ import {
   GestureEngine,
   HoldDetector,
   LaserTracker,
+  PinchDetector,
   SwipeDetector,
+  isPinchPose,
   isPointingPose,
 } from './gestures'
 import type { Frame } from './gestures'
@@ -16,6 +18,7 @@ function frame(over: Partial<Frame>): Frame {
     wristX: 0.5,
     indexTip: null,
     pointing: false,
+    pinching: false,
     ...over,
   }
 }
@@ -164,6 +167,52 @@ describe('isPointingPose', () => {
   })
 })
 
+describe('isPinchPose', () => {
+  function hand(thumbTip: { x: number; y: number }): Array<{ x: number; y: number }> {
+    const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }))
+    lm[0] = { x: 0.5, y: 0.8 } // wrist
+    lm[9] = { x: 0.5, y: 0.5 } // middle knuckle: hand scale 0.3
+    lm[8] = { x: 0.55, y: 0.4 } // index tip
+    lm[4] = thumbTip
+    return lm
+  }
+
+  test('thumb tip touching index tip is a pinch', () => {
+    expect(isPinchPose(hand({ x: 0.56, y: 0.41 }))).toBe(true)
+  })
+
+  test('thumb far from index tip is not a pinch', () => {
+    expect(isPinchPose(hand({ x: 0.3, y: 0.6 }))).toBe(false)
+  })
+
+  test('rejects incomplete landmark arrays', () => {
+    expect(isPinchPose([{ x: 0, y: 0 }])).toBe(false)
+  })
+})
+
+describe('PinchDetector', () => {
+  test('fires once after the hold, then requires release', () => {
+    const det = new PinchDetector()
+    const results: boolean[] = []
+    for (let t = 0; t <= 700; t += 33) results.push(det.feed(frame({ t, pinching: true })))
+    expect(results.filter(Boolean)).toHaveLength(1)
+    // release, pinch again: fires again
+    det.feed(frame({ t: 1000, pinching: false }))
+    det.feed(frame({ t: 1300, pinching: false }))
+    const again: boolean[] = []
+    for (let t = 1400; t <= 1800; t += 33) again.push(det.feed(frame({ t, pinching: true })))
+    expect(again.filter(Boolean)).toHaveLength(1)
+  })
+
+  test('a quick accidental pinch does not fire', () => {
+    const det = new PinchDetector()
+    expect(det.feed(frame({ t: 0, pinching: true }))).toBe(false)
+    expect(det.feed(frame({ t: 100, pinching: true }))).toBe(false)
+    det.feed(frame({ t: 200, pinching: false }))
+    expect(det.feed(frame({ t: 600, pinching: false }))).toBe(false)
+  })
+})
+
 describe('LaserTracker', () => {
   const tip = { x: 0.5, y: 0.5 }
 
@@ -232,6 +281,21 @@ describe('GestureEngine', () => {
       events = events.concat(s.events)
     }
     expect(events).toContain('next')
+  })
+
+  test('pinch hold fires follow-toggle only while armed', () => {
+    const engine = new GestureEngine()
+    let events: string[] = []
+    for (let t = 0; t <= 500; t += 33) {
+      events = events.concat(engine.step(frame({ t, pinching: true })).events)
+    }
+    expect(events).toEqual([])
+    arm(engine, 600)
+    events = []
+    for (let t = 2000; t <= 2500; t += 33) {
+      events = events.concat(engine.step(frame({ t, pinching: true })).events)
+    }
+    expect(events).toEqual(['follow-toggle'])
   })
 
   test('laser needs both arming and pointing', () => {

@@ -18,7 +18,7 @@ export type GestureName =
   | 'Victory'
   | 'ILoveYou'
 
-export type EngineEvent = 'arm-toggle' | 'next' | 'prev'
+export type EngineEvent = 'arm-toggle' | 'next' | 'prev' | 'follow-toggle'
 
 export interface Frame {
   /** timestamp in ms */
@@ -31,6 +31,8 @@ export interface Frame {
   indexTip: { x: number; y: number } | null
   /** geometric pointing pose, computed from landmarks via isPointingPose */
   pointing: boolean
+  /** geometric pinch pose (thumb tip on index tip), via isPinchPose */
+  pinching: boolean
 }
 
 export interface EngineState {
@@ -92,6 +94,45 @@ export function isPointingPose(lm: Point[]): boolean {
   const middleIn = curled(12, 10)
   const ringIn = curled(16, 14)
   return indexOut && middleIn && ringIn
+}
+
+/**
+ * Geometric pinch: thumb tip touching index tip. Scale-invariant, using the
+ * wrist-to-middle-knuckle distance as the hand's own ruler, so it works at
+ * any distance from the camera.
+ */
+export function isPinchPose(lm: Point[]): boolean {
+  if (lm.length < 21) return false
+  const handScale = dist(lm[0], lm[9])
+  if (handScale === 0) return false
+  return dist(lm[4], lm[8]) < handScale * 0.28
+}
+
+const PINCH_HOLD_MS = 350
+
+/** Fires once per pinch held for PINCH_HOLD_MS; must release to fire again. */
+export class PinchDetector {
+  private start: number | null = null
+  private lastSeen = 0
+  private fired = false
+
+  feed(frame: Frame): boolean {
+    if (frame.pinching) {
+      if (this.start === null) {
+        this.start = frame.t
+        this.fired = false
+      }
+      this.lastSeen = frame.t
+      if (frame.t - this.start >= PINCH_HOLD_MS && !this.fired) {
+        this.fired = true
+        return true
+      }
+      return false
+    }
+    if (this.start !== null && frame.t - this.lastSeen < GAP_MS) return false
+    this.start = null
+    return false
+  }
 }
 
 /** Fires once when `gesture` is held continuously for `holdMs` without drifting. */
@@ -182,8 +223,9 @@ export class SwipeDetector {
 
     if (Math.abs(velocity) < SWIPE_REARM_VELOCITY) this.rearmed = true
 
-    // confident pointing means the laser is in use; do not fire, do not reset
-    if (frame.pointing) return 0
+    // pointing means the laser is in use; pinching is a command of its own.
+    // In both cases do not fire, but keep the buffer alive.
+    if (frame.pointing || frame.pinching) return 0
 
     const dir: -1 | 1 = disp > 0 ? 1 : -1
     const oppositeBlocked = dir !== this.lastDir && frame.t < this.oppositeUntil
@@ -258,6 +300,7 @@ export class GestureEngine {
   private armHold = new HoldDetector('Open_Palm', ARM_HOLD_MS)
   private swipe = new SwipeDetector()
   private laserTracker = new LaserTracker()
+  private pinch = new PinchDetector()
 
   step(frame: Frame): EngineState {
     const events: EngineEvent[] = []
@@ -273,6 +316,7 @@ export class GestureEngine {
       const dir = this.swipe.feed(frame)
       if (dir === -1) events.push('next')
       if (dir === 1) events.push('prev')
+      if (this.pinch.feed(frame)) events.push('follow-toggle')
       laser = this.laserTracker.feed(frame)
     }
 

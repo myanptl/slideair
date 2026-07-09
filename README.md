@@ -16,8 +16,14 @@ to WebAssembly. No account, no upload, no server.
 | Swipe left | Next slide |
 | Swipe right | Previous slide |
 | Point at the screen | Laser dot follows your fingertip |
+| Pinch, hold | Follow cam on or off |
 
-Keyboard works too: arrows navigate, F is fullscreen, B is blackout, H is help.
+Follow cam digitally zooms and pans to keep you framed while you walk around.
+It also makes gestures work from farther away: the AI processes the zoomed
+view, so your hand stays large enough to track at a distance.
+
+Keyboard works too: arrows navigate, F is fullscreen, B is blackout, C is
+follow cam, H is help.
 
 ## Your own deck
 
