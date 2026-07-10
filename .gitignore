@@ -25,4 +25,6 @@ dist-ssr
 .claude-flow/
 .playwright-mcp/
 *.png
+!promo/*.png
 .vercel
+promo/slideair-3-live-demo.png
