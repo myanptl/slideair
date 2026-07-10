@@ -2,17 +2,15 @@ import { useState } from 'react'
 
 const GESTURES: Array<[string, string]> = [
   ['Open palm, hold', 'Arm or disarm gesture control'],
-  ['Swipe left', 'Next slide, one quick flick'],
-  ['Swipe right', 'Previous slide'],
+  ['Flick left', 'Next slide, a wrist flick is enough'],
+  ['Flick right', 'Previous slide'],
   ['Point at the screen', 'Laser dot follows your fingertip'],
-  ['Pinch, hold', 'Follow cam: zooms to keep you framed as you move'],
 ]
 
 const KEYS: Array<[string, string]> = [
   ['← →', 'Previous / next slide'],
   ['F', 'Fullscreen'],
   ['B', 'Blackout'],
-  ['C', 'Follow cam'],
   ['H', 'This help'],
 ]
 

@@ -1,12 +1,14 @@
 // Pure gesture logic. No DOM, no camera. Everything here is unit-testable.
 // Coordinates are in MIRRORED normalized space (0..1, matching what the user sees).
 //
-// v2 notes, learned from real use:
-// - Fast swipes cause motion blur; the tracker drops the hand for a few frames
-//   mid-swipe. The detector must bridge short dropouts, never hard-reset on them.
-// - The canned Pointing_Up classifier is too strict for natural pointing.
-//   Pointing is detected geometrically from landmarks instead, with hysteresis.
-// - The fist blackout gesture was removed: low value, real false positives.
+// v3 notes, learned from real use:
+// - Swipes are measured on the FINGERTIPS in units of the user's own HAND SIZE.
+//   A flick from the wrist barely moves the wrist but sweeps the fingertips,
+//   and hand-relative units make the same flick work at any distance.
+// - Fast motion blurs the hand and tracking drops for a few frames; detectors
+//   bridge short dropouts instead of resetting.
+// - Pointing is geometric (index out, middle and ring curled) with hysteresis;
+//   the canned Pointing_Up class was too strict for natural pointing.
 
 export type GestureName =
   | 'None'
@@ -18,21 +20,21 @@ export type GestureName =
   | 'Victory'
   | 'ILoveYou'
 
-export type EngineEvent = 'arm-toggle' | 'next' | 'prev' | 'follow-toggle'
+export type EngineEvent = 'arm-toggle' | 'next' | 'prev'
 
 export interface Frame {
   /** timestamp in ms */
   t: number
   gesture: GestureName
   score: number
-  /** mirrored wrist x, or null when no hand is tracked this frame */
-  wristX: number | null
+  /** mirrored middle-fingertip x, or null when no hand is tracked this frame */
+  handX: number | null
+  /** hand size in frame units (wrist to middle knuckle); the motion ruler */
+  handScale: number
   /** mirrored index fingertip, or null */
   indexTip: { x: number; y: number } | null
   /** geometric pointing pose, computed from landmarks via isPointingPose */
   pointing: boolean
-  /** geometric pinch pose (thumb tip on index tip), via isPinchPose */
-  pinching: boolean
 }
 
 export interface EngineState {
@@ -45,25 +47,28 @@ export interface EngineState {
 
 const MIN_SCORE = 0.5
 const ARM_HOLD_MS = 700
-/** hold cancels if the wrist drifts more than this while holding */
-const HOLD_DRIFT = 0.06
+/** hold cancels if the hand drifts more than this while holding (frame units) */
+const HOLD_DRIFT = 0.08
 /** a tracked hand is forgiven for gaps shorter than this (motion blur, flicker) */
 const GAP_MS = 160
 
-// Swipe: velocity-based. Distances are fractions of the camera width.
+// Swipe: velocity-based, in HAND-SCALE units so a wrist flick works at any
+// distance. One hand-scale = wrist to middle knuckle.
 const SWIPE_WINDOW_MS = 260
 const SWIPE_MIN_SPAN_MS = 50
-/** peak horizontal velocity, in camera-widths per second */
-const SWIPE_MIN_VELOCITY = 1.0
-/** net displacement across the window */
-const SWIPE_MIN_DISTANCE = 0.09
+/** peak horizontal velocity, in hand-scales per second */
+const SWIPE_MIN_VELOCITY = 5
+/** net displacement across the window, in hand-scales */
+const SWIPE_MIN_DISTANCE = 1.15
 const SWIPE_COOLDOWN_MS = 650
 /** returning the hand after a swipe moves the opposite way; block that direction longer */
 const SWIPE_OPPOSITE_COOLDOWN_MS = 1300
-/** the hand must calm below this velocity before another swipe can fire */
-const SWIPE_REARM_VELOCITY = 0.35
-/** a between-frame jump this large is a tracking glitch, not motion */
-const TELEPORT_DISTANCE = 0.28
+/** the hand must calm below this velocity (hand-scales/s) before the next swipe */
+const SWIPE_REARM_VELOCITY = 1.8
+/** a between-frame jump larger than this many hand-scales is a tracking glitch */
+const TELEPORT_HS = 1.6
+/** ignore hand-scale readings below this; they are degenerate detections */
+const MIN_HAND_SCALE = 0.02
 
 // Laser: hysteresis + smoothing.
 const LASER_ON_FRAMES = 3
@@ -90,49 +95,7 @@ export function isPointingPose(lm: Point[]): boolean {
     dist(lm[tip], wrist) > dist(lm[pip], wrist) * 1.1
   const curled = (tip: number, pip: number) =>
     dist(lm[tip], wrist) < dist(lm[pip], wrist) * 1.05
-  const indexOut = extended(8, 6)
-  const middleIn = curled(12, 10)
-  const ringIn = curled(16, 14)
-  return indexOut && middleIn && ringIn
-}
-
-/**
- * Geometric pinch: thumb tip touching index tip. Scale-invariant, using the
- * wrist-to-middle-knuckle distance as the hand's own ruler, so it works at
- * any distance from the camera.
- */
-export function isPinchPose(lm: Point[]): boolean {
-  if (lm.length < 21) return false
-  const handScale = dist(lm[0], lm[9])
-  if (handScale === 0) return false
-  return dist(lm[4], lm[8]) < handScale * 0.28
-}
-
-const PINCH_HOLD_MS = 350
-
-/** Fires once per pinch held for PINCH_HOLD_MS; must release to fire again. */
-export class PinchDetector {
-  private start: number | null = null
-  private lastSeen = 0
-  private fired = false
-
-  feed(frame: Frame): boolean {
-    if (frame.pinching) {
-      if (this.start === null) {
-        this.start = frame.t
-        this.fired = false
-      }
-      this.lastSeen = frame.t
-      if (frame.t - this.start >= PINCH_HOLD_MS && !this.fired) {
-        this.fired = true
-        return true
-      }
-      return false
-    }
-    if (this.start !== null && frame.t - this.lastSeen < GAP_MS) return false
-    this.start = null
-    return false
-  }
+  return extended(8, 6) && curled(12, 10) && curled(16, 14)
 }
 
 /** Fires once when `gesture` is held continuously for `holdMs` without drifting. */
@@ -155,17 +118,17 @@ export class HoldDetector {
     if (active) {
       if (this.start === null) {
         this.start = frame.t
-        this.startX = frame.wristX
+        this.startX = frame.handX
         this.fired = false
       }
       this.lastSeen = frame.t
       const drifted =
         this.startX !== null &&
-        frame.wristX !== null &&
-        Math.abs(frame.wristX - this.startX) > HOLD_DRIFT
+        frame.handX !== null &&
+        Math.abs(frame.handX - this.startX) > HOLD_DRIFT
       if (drifted) {
         this.start = frame.t
-        this.startX = frame.wristX
+        this.startX = frame.handX
         this.progress = 0
         return false
       }
@@ -186,12 +149,12 @@ export class HoldDetector {
 }
 
 /**
- * Velocity-based swipe detector. Returns -1 (left), 1 (right), or 0.
- * Bridges tracking dropouts shorter than GAP_MS instead of resetting,
- * because fast swipes are exactly when the tracker loses the hand.
+ * Velocity-based swipe detector in hand-scale units. Returns -1 (left),
+ * 1 (right), or 0. Bridges tracking dropouts shorter than GAP_MS instead of
+ * resetting, because fast swipes are exactly when the tracker loses the hand.
  */
 export class SwipeDetector {
-  private samples: Array<{ t: number; x: number }> = []
+  private samples: Array<{ t: number; x: number; scale: number }> = []
   private lastSample = 0
   private cooldownUntil = 0
   private oppositeUntil = 0
@@ -199,17 +162,17 @@ export class SwipeDetector {
   private rearmed = true
 
   feed(frame: Frame): -1 | 0 | 1 {
-    if (frame.wristX === null) {
+    if (frame.handX === null || frame.handScale < MIN_HAND_SCALE) {
       // bridge short dropouts; only reset after a real absence
       if (frame.t - this.lastSample > GAP_MS) this.samples = []
       return 0
     }
     // a huge between-frame jump is a re-detection somewhere else, not motion
     const prev = this.samples[this.samples.length - 1]
-    if (prev && Math.abs(frame.wristX - prev.x) > TELEPORT_DISTANCE) {
+    if (prev && Math.abs(frame.handX - prev.x) > TELEPORT_HS * frame.handScale) {
       this.samples = []
     }
-    this.samples.push({ t: frame.t, x: frame.wristX })
+    this.samples.push({ t: frame.t, x: frame.handX, scale: frame.handScale })
     this.lastSample = frame.t
     const cutoff = frame.t - SWIPE_WINDOW_MS
     while (this.samples.length && this.samples[0].t < cutoff) this.samples.shift()
@@ -218,23 +181,27 @@ export class SwipeDetector {
     const span = frame.t - first.t
     if (span < SWIPE_MIN_SPAN_MS) return 0
 
-    const disp = frame.wristX - first.x
-    const velocity = disp / (span / 1000)
+    // average hand scale across the window is the motion ruler
+    let scaleSum = 0
+    for (const s of this.samples) scaleSum += s.scale
+    const scale = scaleSum / this.samples.length
 
-    if (Math.abs(velocity) < SWIPE_REARM_VELOCITY) this.rearmed = true
+    const dispHs = (frame.handX - first.x) / scale
+    const velocityHs = dispHs / (span / 1000)
 
-    // pointing means the laser is in use; pinching is a command of its own.
-    // In both cases do not fire, but keep the buffer alive.
-    if (frame.pointing || frame.pinching) return 0
+    if (Math.abs(velocityHs) < SWIPE_REARM_VELOCITY) this.rearmed = true
 
-    const dir: -1 | 1 = disp > 0 ? 1 : -1
+    // pointing means the laser is in use; do not fire, but keep the buffer alive
+    if (frame.pointing) return 0
+
+    const dir: -1 | 1 = dispHs > 0 ? 1 : -1
     const oppositeBlocked = dir !== this.lastDir && frame.t < this.oppositeUntil
     if (
       this.rearmed &&
       frame.t >= this.cooldownUntil &&
       !oppositeBlocked &&
-      Math.abs(velocity) >= SWIPE_MIN_VELOCITY &&
-      Math.abs(disp) >= SWIPE_MIN_DISTANCE
+      Math.abs(velocityHs) >= SWIPE_MIN_VELOCITY &&
+      Math.abs(dispHs) >= SWIPE_MIN_DISTANCE
     ) {
       this.cooldownUntil = frame.t + SWIPE_COOLDOWN_MS
       this.oppositeUntil = frame.t + SWIPE_OPPOSITE_COOLDOWN_MS
@@ -300,7 +267,6 @@ export class GestureEngine {
   private armHold = new HoldDetector('Open_Palm', ARM_HOLD_MS)
   private swipe = new SwipeDetector()
   private laserTracker = new LaserTracker()
-  private pinch = new PinchDetector()
 
   step(frame: Frame): EngineState {
     const events: EngineEvent[] = []
@@ -316,7 +282,6 @@ export class GestureEngine {
       const dir = this.swipe.feed(frame)
       if (dir === -1) events.push('next')
       if (dir === 1) events.push('prev')
-      if (this.pinch.feed(frame)) events.push('follow-toggle')
       laser = this.laserTracker.feed(frame)
     }
 

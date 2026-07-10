@@ -3,37 +3,41 @@ import {
   GestureEngine,
   HoldDetector,
   LaserTracker,
-  PinchDetector,
   SwipeDetector,
-  isPinchPose,
   isPointingPose,
 } from './gestures'
 import type { Frame } from './gestures'
+
+/** default hand scale: a hand at conversational distance (~1m) */
+const NEAR = 0.15
+/** a hand across the room */
+const FAR = 0.055
 
 function frame(over: Partial<Frame>): Frame {
   return {
     t: 0,
     gesture: 'None',
     score: 0,
-    wristX: 0.5,
+    handX: 0.5,
+    handScale: NEAR,
     indexTip: null,
     pointing: false,
-    pinching: false,
     ...over,
   }
 }
 
 function palmAt(t: number, x = 0.5): Frame {
-  return frame({ t, gesture: 'Open_Palm', score: 0.9, wristX: x })
+  return frame({ t, gesture: 'Open_Palm', score: 0.9, handX: x })
 }
 
-/** Feed a linear swipe from x=from to x=to over `ms`, one sample every 33ms. */
+/** Feed a linear motion from x=from to x=to over `ms`, one sample every 33ms. */
 function sweep(
   det: SwipeDetector,
   from: number,
   to: number,
   t0: number,
   ms = 200,
+  scale = NEAR,
   mutate: (f: Frame, i: number) => Frame = (f) => f,
 ) {
   const results: number[] = []
@@ -41,7 +45,8 @@ function sweep(
   for (let i = 0; i <= steps; i++) {
     const f = frame({
       t: t0 + i * 33,
-      wristX: from + ((to - from) * i) / steps,
+      handX: from + ((to - from) * i) / steps,
+      handScale: scale,
     })
     results.push(det.feed(mutate(f, i)))
   }
@@ -67,77 +72,99 @@ describe('HoldDetector', () => {
 })
 
 describe('SwipeDetector', () => {
-  test('detects a fast left swipe as -1', () => {
+  test('a big arm swipe near the camera fires', () => {
     const det = new SwipeDetector()
     expect(sweep(det, 0.8, 0.45, 0)).toContain(-1)
   })
 
-  test('detects a fast right swipe as 1', () => {
+  test('REGRESSION: a wrist flick fires (small on screen, fast for the hand)', () => {
+    // fingertips travel ~1.5 hand-scales in ~130ms; on screen that is
+    // only 0.23 of the frame, which the old frame-relative thresholds needed
     const det = new SwipeDetector()
-    expect(sweep(det, 0.35, 0.7, 0)).toContain(1)
+    expect(sweep(det, 0.6, 0.375, 0, 133)).toContain(-1)
   })
 
-  test('REGRESSION: survives a tracking dropout mid-swipe', () => {
-    // fast swipes blur the hand and the tracker loses it for a few frames;
-    // v1 reset its buffer here and missed the swipe
+  test('REGRESSION: the same wrist flick fires from across the room', () => {
+    // far away the identical flick covers just 8% of the frame;
+    // hand-scale units make it identical to the near case
     const det = new SwipeDetector()
-    const results = sweep(det, 0.8, 0.4, 0, 200, (f, i) =>
-      i === 3 || i === 4 ? { ...f, wristX: null } : f,
+    expect(sweep(det, 0.5, 0.417, 0, 133, FAR)).toContain(-1)
+  })
+
+  test('rightward flick fires 1', () => {
+    const det = new SwipeDetector()
+    expect(sweep(det, 0.4, 0.63, 0, 133)).toContain(1)
+  })
+
+  test('survives a tracking dropout mid-flick', () => {
+    const det = new SwipeDetector()
+    const results = sweep(det, 0.7, 0.4, 0, 200, NEAR, (f, i) =>
+      i === 3 || i === 4 ? { ...f, handX: null } : f,
     )
     expect(results).toContain(-1)
   })
 
-  test('REGRESSION: survives classifier flicker mid-swipe', () => {
-    // v1 cleared its buffer whenever the classifier said Pointing_Up
-    const det = new SwipeDetector()
-    const results = sweep(det, 0.8, 0.4, 0, 200, (f, i) =>
-      i === 2 ? { ...f, gesture: 'Pointing_Up', score: 0.8 } : f,
-    )
-    expect(results).toContain(-1)
-  })
-
-  test('a short, sharp flick fires (small distance, high velocity)', () => {
-    const det = new SwipeDetector()
-    expect(sweep(det, 0.6, 0.45, 0, 100)).toContain(-1)
-  })
-
-  test('ignores slow drift', () => {
+  test('ignores slow drift, even a large one', () => {
     const det = new SwipeDetector()
     const results: number[] = []
     for (let i = 0; i <= 30; i++) {
-      results.push(det.feed(frame({ t: i * 100, wristX: 0.2 + i * 0.02 })))
+      results.push(det.feed(frame({ t: i * 100, handX: 0.2 + i * 0.02 })))
     }
     expect(results.every((r) => r === 0)).toBe(true)
   })
 
-  test('cooldown plus rearm: continuous waving fires once, calm hand rearms', () => {
+  test('ignores talking-hands wobble (sub-threshold oscillation)', () => {
     const det = new SwipeDetector()
-    expect(sweep(det, 0.8, 0.4, 0)).toContain(-1)
-    // immediately swipe again inside cooldown: nothing
-    expect(sweep(det, 0.8, 0.4, 250)).not.toContain(-1)
-    // reposition slowly back to the start, then flick again: fires
-    expect(sweep(det, 0.4, 0.8, 500, 800)).not.toContain(1)
-    for (let t = 1350; t <= 1900; t += 33) det.feed(frame({ t, wristX: 0.8 }))
-    expect(sweep(det, 0.8, 0.4, 1950)).toContain(-1)
+    const results: number[] = []
+    for (let i = 0; i <= 60; i++) {
+      const x = 0.5 + Math.sin(i / 3) * 0.05
+      results.push(det.feed(frame({ t: i * 33, handX: x })))
+    }
+    expect(results.every((r) => r === 0)).toBe(true)
   })
 
-  test('REGRESSION: returning the hand after a swipe never fires the opposite way', () => {
+  test('returning the hand after a flick never fires the opposite way', () => {
     const det = new SwipeDetector()
-    expect(sweep(det, 0.8, 0.4, 0)).toContain(-1)
-    // a brisk return to the start position, right after the cooldown expires
-    const back = sweep(det, 0.4, 0.8, 700, 250)
+    expect(sweep(det, 0.7, 0.4, 0)).toContain(-1)
+    const back = sweep(det, 0.4, 0.7, 700, 250)
     expect(back).not.toContain(1)
+  })
+
+  test('cooldown plus rearm allows a second same-direction flick', () => {
+    const det = new SwipeDetector()
+    expect(sweep(det, 0.7, 0.4, 0)).toContain(-1)
+    expect(sweep(det, 0.7, 0.4, 250)).not.toContain(-1)
+    for (let t = 500; t <= 1400; t += 33) det.feed(frame({ t, handX: 0.7 }))
+    expect(sweep(det, 0.7, 0.4, 1450)).toContain(-1)
+  })
+
+  test('a tracking teleport does not read as a swipe', () => {
+    const det = new SwipeDetector()
+    det.feed(frame({ t: 0, handX: 0.8 }))
+    det.feed(frame({ t: 33, handX: 0.79 }))
+    // re-detection on the other side of the frame
+    const results = [
+      det.feed(frame({ t: 66, handX: 0.3 })),
+      det.feed(frame({ t: 99, handX: 0.29 })),
+      det.feed(frame({ t: 132, handX: 0.28 })),
+    ]
+    expect(results.every((r) => r === 0)).toBe(true)
   })
 
   test('does not fire while pointing (laser in use)', () => {
     const det = new SwipeDetector()
-    const results = sweep(det, 0.8, 0.4, 0, 200, (f) => ({ ...f, pointing: true }))
+    const results = sweep(det, 0.8, 0.4, 0, 200, NEAR, (f) => ({ ...f, pointing: true }))
+    expect(results.every((r) => r === 0)).toBe(true)
+  })
+
+  test('ignores degenerate hand-scale readings', () => {
+    const det = new SwipeDetector()
+    const results = sweep(det, 0.8, 0.4, 0, 200, 0.001)
     expect(results.every((r) => r === 0)).toBe(true)
   })
 })
 
 describe('isPointingPose', () => {
-  // synthetic hand: wrist at origin, landmarks placed by radial distance
   function hand(dists: Record<number, number>): Array<{ x: number; y: number }> {
     const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }))
     for (const [idx, d] of Object.entries(dists)) {
@@ -147,7 +174,6 @@ describe('isPointingPose', () => {
   }
 
   test('index extended with middle and ring curled is pointing', () => {
-    // index tip (8) beyond its pip (6); middle/ring tips inside their pips
     const lm = hand({ 6: 0.15, 8: 0.28, 10: 0.14, 12: 0.1, 14: 0.13, 16: 0.09 })
     expect(isPointingPose(lm)).toBe(true)
   })
@@ -167,52 +193,6 @@ describe('isPointingPose', () => {
   })
 })
 
-describe('isPinchPose', () => {
-  function hand(thumbTip: { x: number; y: number }): Array<{ x: number; y: number }> {
-    const lm = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }))
-    lm[0] = { x: 0.5, y: 0.8 } // wrist
-    lm[9] = { x: 0.5, y: 0.5 } // middle knuckle: hand scale 0.3
-    lm[8] = { x: 0.55, y: 0.4 } // index tip
-    lm[4] = thumbTip
-    return lm
-  }
-
-  test('thumb tip touching index tip is a pinch', () => {
-    expect(isPinchPose(hand({ x: 0.56, y: 0.41 }))).toBe(true)
-  })
-
-  test('thumb far from index tip is not a pinch', () => {
-    expect(isPinchPose(hand({ x: 0.3, y: 0.6 }))).toBe(false)
-  })
-
-  test('rejects incomplete landmark arrays', () => {
-    expect(isPinchPose([{ x: 0, y: 0 }])).toBe(false)
-  })
-})
-
-describe('PinchDetector', () => {
-  test('fires once after the hold, then requires release', () => {
-    const det = new PinchDetector()
-    const results: boolean[] = []
-    for (let t = 0; t <= 700; t += 33) results.push(det.feed(frame({ t, pinching: true })))
-    expect(results.filter(Boolean)).toHaveLength(1)
-    // release, pinch again: fires again
-    det.feed(frame({ t: 1000, pinching: false }))
-    det.feed(frame({ t: 1300, pinching: false }))
-    const again: boolean[] = []
-    for (let t = 1400; t <= 1800; t += 33) again.push(det.feed(frame({ t, pinching: true })))
-    expect(again.filter(Boolean)).toHaveLength(1)
-  })
-
-  test('a quick accidental pinch does not fire', () => {
-    const det = new PinchDetector()
-    expect(det.feed(frame({ t: 0, pinching: true }))).toBe(false)
-    expect(det.feed(frame({ t: 100, pinching: true }))).toBe(false)
-    det.feed(frame({ t: 200, pinching: false }))
-    expect(det.feed(frame({ t: 600, pinching: false }))).toBe(false)
-  })
-})
-
 describe('LaserTracker', () => {
   const tip = { x: 0.5, y: 0.5 }
 
@@ -226,15 +206,12 @@ describe('LaserTracker', () => {
   test('survives a short pointing gap, turns off after a long one', () => {
     const laser = new LaserTracker()
     for (let t = 0; t <= 132; t += 33) laser.feed(frame({ t, pointing: true, indexTip: tip }))
-    // 100ms gap: stays on
     expect(laser.feed(frame({ t: 232, pointing: false })).active).toBe(true)
-    // 400ms gap: off
     expect(laser.feed(frame({ t: 632, pointing: false })).active).toBe(false)
   })
 
   test('maps the central camera region to the full slide', () => {
     const laser = new LaserTracker()
-    // point at the left edge of the active region: laser should reach 0
     const edge = { x: 0.18, y: 0.5 }
     let out = { active: false, x: 1, y: 1 }
     for (let t = 0; t <= 330; t += 33) {
@@ -250,7 +227,6 @@ describe('LaserTracker', () => {
     const jumped = laser.feed(
       frame({ t: 132, pointing: true, indexTip: { x: 0.8, y: 0.5 } }),
     )
-    // one frame after a big jump the smoothed position is partway there
     expect(jumped.x).toBeGreaterThan(0.5)
     expect(jumped.x).toBeLessThan(0.95)
   })
@@ -261,41 +237,26 @@ describe('GestureEngine', () => {
     for (let t = t0; t <= t0 + 750; t += 33) engine.step(palmAt(t))
   }
 
-  test('starts disarmed and ignores swipes', () => {
+  test('starts disarmed and ignores flicks', () => {
     const engine = new GestureEngine()
     let events: string[] = []
     for (let i = 0; i <= 6; i++) {
-      const s = engine.step(frame({ t: i * 33, wristX: 0.8 - i * 0.06 }))
+      const s = engine.step(frame({ t: i * 33, handX: 0.7 - i * 0.05 }))
       events = events.concat(s.events)
     }
     expect(events).toEqual([])
   })
 
-  test('arms after a palm hold, then swipes navigate', () => {
+  test('arms after a palm hold, then flicks navigate', () => {
     const engine = new GestureEngine()
     arm(engine, 0)
-    expect(engine.step(frame({ t: 1000, wristX: 0.8 })).armed).toBe(true)
+    expect(engine.step(frame({ t: 1000, handX: 0.7 })).armed).toBe(true)
     let events: string[] = []
     for (let i = 0; i <= 6; i++) {
-      const s = engine.step(frame({ t: 2000 + i * 33, wristX: 0.8 - i * 0.06 }))
+      const s = engine.step(frame({ t: 2000 + i * 33, handX: 0.7 - i * 0.05 }))
       events = events.concat(s.events)
     }
     expect(events).toContain('next')
-  })
-
-  test('pinch hold fires follow-toggle only while armed', () => {
-    const engine = new GestureEngine()
-    let events: string[] = []
-    for (let t = 0; t <= 500; t += 33) {
-      events = events.concat(engine.step(frame({ t, pinching: true })).events)
-    }
-    expect(events).toEqual([])
-    arm(engine, 600)
-    events = []
-    for (let t = 2000; t <= 2500; t += 33) {
-      events = events.concat(engine.step(frame({ t, pinching: true })).events)
-    }
-    expect(events).toEqual(['follow-toggle'])
   })
 
   test('laser needs both arming and pointing', () => {

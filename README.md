@@ -13,17 +13,14 @@ to WebAssembly. No account, no upload, no server.
 | Gesture | Action |
 |---|---|
 | Open palm, hold | Arm or disarm gesture control |
-| Swipe left | Next slide |
-| Swipe right | Previous slide |
+| Flick left | Next slide |
+| Flick right | Previous slide |
 | Point at the screen | Laser dot follows your fingertip |
-| Pinch, hold | Follow cam on or off |
 
-Follow cam digitally zooms and pans to keep you framed while you walk around.
-It also makes gestures work from farther away: the AI processes the zoomed
-view, so your hand stays large enough to track at a distance.
+Motion is measured on your fingertips in units of your own hand size, so a
+quick flick from the wrist is enough, near the camera or across the room.
 
-Keyboard works too: arrows navigate, F is fullscreen, B is blackout, C is
-follow cam, H is help.
+Keyboard works too: arrows navigate, F is fullscreen, B is blackout, H is help.
 
 ## Your own deck
 
