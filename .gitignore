@@ -26,5 +26,6 @@ dist-ssr
 .playwright-mcp/
 *.png
 !promo/*.png
+!public/*.png
 .vercel
 promo/slideair-3-live-demo.png
