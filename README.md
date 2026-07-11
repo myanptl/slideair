@@ -24,9 +24,15 @@ Keyboard works too: arrows navigate, F is fullscreen, B is blackout, H is help.
 
 ## Your own deck
 
-Open the Deck menu and paste markdown. Slides are separated by `---` lines.
-Inside a slide: `# heading`, `## kicker`, `- bullets`, `> big statement`.
-Decks are saved in your browser only.
+**Present a file:** open the Deck menu and pick a file — or just drag it onto the
+window. PDFs render page-by-page (crisp, on-device via pdf.js), images become one
+slide each, and `.md`/`.txt` files load as markdown decks. Using PowerPoint or
+Keynote? Export as PDF first (File → Export → PDF) — it stays pixel-perfect.
+Files never leave your device; PDF and image decks live for the session only.
+
+**Or paste markdown:** slides are separated by `---` lines. Inside a slide:
+`# heading`, `## kicker`, `- bullets`, `> big statement`. Markdown decks are
+saved in your browser only.
 
 ## Stack
 

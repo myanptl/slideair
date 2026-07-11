@@ -480,3 +480,57 @@ code {
     animation: none;
   }
 }
+
+/* ---------- file decks (pdf / images) ---------- */
+.file-slide {
+  padding: clamp(1rem, 3.5vw, 3rem);
+  padding-bottom: clamp(3rem, 7vh, 4.5rem);
+}
+
+.file-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.image-slide {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stage-dropping::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 2px dashed var(--gold);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.drop-hint {
+  position: absolute;
+  top: 1.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--gold);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}

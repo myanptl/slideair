@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 const GESTURES: Array<[string, string]> = [
   ['Open palm, hold', 'Arm or disarm gesture control'],
@@ -51,17 +51,41 @@ export function HelpOverlay({ onClose }: { onClose: () => void }) {
 export function DeckModal({
   initial,
   onLoad,
+  onFiles,
   onClose,
 }: {
   initial: string
   onLoad: (md: string) => void
+  onFiles: (files: File[]) => void
   onClose: () => void
 }) {
   const [text, setText] = useState(initial)
+  const fileRef = useRef<HTMLInputElement | null>(null)
   return (
     <div className="overlay" role="dialog" aria-label="Load deck" onClick={onClose}>
       <div className="panel panel-wide" onClick={(e) => e.stopPropagation()}>
-        <h2 className="panel-title">Your deck, in markdown</h2>
+        <h2 className="panel-title">Present a file</h2>
+        <p className="fineprint">
+          PDF, markdown, text, or images (one slide each). PowerPoint or Keynote? Export
+          it as a PDF first — it stays pixel-perfect. Files never leave this device.
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".pdf,.md,.markdown,.txt,image/*"
+          multiple
+          hidden
+          data-testid="deck-file-input"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? [])
+            if (files.length > 0) onFiles(files)
+            e.target.value = ''
+          }}
+        />
+        <button className="btn" onClick={() => fileRef.current?.click()}>
+          Open a file…
+        </button>
+        <h2 className="panel-title">Or paste markdown</h2>
         <p className="fineprint">
           Separate slides with a line containing only <code>---</code>. Use{' '}
           <code># heading</code>, <code>## kicker</code>, <code>- bullets</code> and{' '}
