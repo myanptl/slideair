@@ -78,7 +78,15 @@ export function renderPage(
       })
       await task.promise
       return !cancelled
-    } catch {
+    } catch (err) {
+      // A cancelled render throws, and that is routine (the user changed slide
+      // mid-paint). A real failure is not, and swallowing it silently leaves a
+      // blank slide with nothing to explain it.
+      const cancelledRender =
+        cancelled || (err as { name?: string })?.name === 'RenderingCancelledException'
+      if (!cancelledRender) {
+        console.error(`SlideAir: failed to render PDF page ${pageNumber}`, err)
+      }
       return false
     }
   })()

@@ -484,7 +484,12 @@ code {
 /* ---------- file decks (pdf / images) ---------- */
 .file-slide {
   padding: clamp(1rem, 3.5vw, 3rem);
-  padding-bottom: clamp(3rem, 7vh, 4.5rem);
+  /* The controls and the slide footer are both position:absolute, so they add no
+     flow height and a fitted page will render straight underneath them. These
+     insets reserve the space they actually occupy. They cannot shrink with the
+     viewport the way the side padding does, because the chrome does not shrink. */
+  padding-top: max(4.2rem, clamp(1rem, 3.5vw, 3rem));
+  padding-bottom: max(5rem, clamp(3rem, 7vh, 4.5rem));
 }
 
 .file-frame {
