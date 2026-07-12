@@ -224,7 +224,10 @@ export default function App() {
           The gesture engine could not start in this browser. Keyboard arrows still work.
         </p>
       )}
-      {status === 'idle' && (
+      {/* The notice floats over the slide. A markdown slide is left-aligned text, so it
+          sits on empty space. A file deck fills the frame edge to edge, so the notice would
+          cover the page. Show it only where it costs nothing; Help still explains the rest. */}
+      {status === 'idle' && source.kind === 'markdown' && (
         <p className="notice notice-quiet">
           Start the camera, then hold an open palm to arm gesture control. Everything runs
           on this device.
