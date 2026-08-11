@@ -29,3 +29,6 @@ dist-ssr
 !public/*.png
 .vercel
 promo/slideair-3-live-demo.png
+
+# graphify analysis output (generated, not source)
+graphify-out/
