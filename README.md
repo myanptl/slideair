@@ -1,5 +1,7 @@
 # SlideAir
 
+[![SlideAir](docs/screenshot.jpeg)](https://slideair.vercel.app)
+
 Present with your hands. SlideAir turns your webcam into a presentation remote:
 swipe to change slides and point at the screen to get a laser dot. A held open
 palm arms and disarms everything so it never misfires while you talk with your
