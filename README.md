@@ -2,52 +2,15 @@
 
 [![SlideAir](docs/screenshot.jpeg)](https://slideair.vercel.app)
 
-Present with your hands. SlideAir turns your webcam into a presentation remote:
-swipe to change slides and point at the screen to get a laser dot. A held open
-palm arms and disarms everything so it never misfires while you talk with your
-hands.
+Present slides with hand gestures. Your webcam stays on your device.
 
-All processing runs on your device with Google MediaPipe hand tracking compiled
-to WebAssembly. No account, no upload, no server.
+https://slideair.vercel.app
 
-## Gestures
-
-| Gesture | Action |
-|---|---|
-| Open palm, hold | Arm or disarm gesture control |
-| Flick left | Next slide |
-| Flick right | Previous slide |
-| Point at the screen | Laser dot follows your fingertip |
-
-Motion is measured on your fingertips in units of your own hand size, so a
-quick flick from the wrist is enough, near the camera or across the room.
-
-Keyboard works too: arrows navigate, F is fullscreen, B is blackout, H is help.
-
-## Your own deck
-
-**Present a file:** open the Deck menu and pick a file — or just drag it onto the
-window. PDFs render page-by-page (crisp, on-device via pdf.js), images become one
-slide each, and `.md`/`.txt` files load as markdown decks. Using PowerPoint or
-Keynote? Export as PDF first (File → Export → PDF) — it stays pixel-perfect.
-Files never leave your device; PDF and image decks live for the session only.
-
-**Or paste markdown:** slides are separated by `---` lines. Inside a slide:
-`# heading`, `## kicker`, `- bullets`, `> big statement`. Markdown decks are
-saved in your browser only.
-
-## Stack
-
-React + Vite + TypeScript. MediaPipe Tasks Vision (self-hosted WASM + model).
-Gesture logic is a pure state machine in `src/lib/gestures.ts` with unit tests.
-
-## Develop
+## Run it
 
 ```bash
 npm install
 npm run dev
-npm test
-npm run build
 ```
 
-Part of the Conductor project: motion as a first-class input.
+MIT licence.
