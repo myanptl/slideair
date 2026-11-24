@@ -280,6 +280,11 @@ code {
   gap: 0.45rem;
 }
 
+.stage-cam .slide-footer {
+  /* the camera HUD sits bottom-right; keep the page counter clear of it */
+  right: calc(236px + 2.4rem);
+}
+
 .hud-hidden {
   visibility: hidden;
 }

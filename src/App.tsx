@@ -173,7 +173,7 @@ export default function App() {
 
   return (
     <div
-      className={`stage ${isDropping ? 'stage-dropping' : ''}`}
+      className={`stage ${isDropping ? 'stage-dropping' : ''} ${status === 'running' ? 'stage-cam' : ''}`}
       onDragOver={(e) => {
         e.preventDefault()
         setIsDropping(true)
